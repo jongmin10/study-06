@@ -469,7 +469,13 @@ async function init() {
     return;
   }
 
-  if (joinCode) {
+  // pendingJoin: 카카오 OAuth 전에 초대링크 열었던 경우 처리
+  const pendingJoin = localStorage.getItem('pendingJoin');
+  if (pendingJoin) {
+    localStorage.removeItem('pendingJoin');
+    await joinList(pendingJoin);
+    history.replaceState({}, '', location.pathname);
+  } else if (joinCode) {
     await joinList(joinCode);
     history.replaceState({}, '', location.pathname);
   } else if (!s.listId) {
