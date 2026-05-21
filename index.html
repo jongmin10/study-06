@@ -165,14 +165,18 @@
     }
     .item-row.checked .item-name { text-decoration: line-through; color: var(--text2); }
     .item-meta { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
-    .del-btn {
+    .edit-btn, .del-btn {
       width: 28px; height: 28px; border: none; background: none;
-      color: var(--border); font-size: 0.95rem; cursor: pointer;
-      border-radius: 6px; display: flex; align-items: center; justify-content: center;
-      transition: color 0.15s, background 0.15s; opacity: 0;
+      cursor: pointer; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s; opacity: 0; flex-shrink: 0;
     }
+    .edit-btn { color: var(--text2); font-size: 0.82rem; }
+    .del-btn  { color: var(--border); font-size: 0.95rem; }
+    .item-row:hover .edit-btn,
     .item-row:hover .del-btn { opacity: 1; }
-    .del-btn:hover { color: var(--danger); background: #fef2f2; }
+    .edit-btn:hover { color: var(--accent); background: var(--accent-bg); }
+    .del-btn:hover  { color: var(--danger); background: #fef2f2; }
 
     /* checkbox */
     .cb-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; cursor: pointer; }
@@ -372,7 +376,7 @@
 <div class="overlay" id="addOverlay">
   <div class="modal" id="addModal">
     <div class="modal-handle"></div>
-    <div class="modal-title">항목 추가</div>
+    <div class="modal-title" id="modalTitle">항목 추가</div>
     <div class="form-group">
       <label class="form-label">이름</label>
       <input class="form-input" id="newName" type="text" placeholder="예: 우유" maxlength="60" autocomplete="off"/>
@@ -433,7 +437,7 @@ const s = {
   userId: null, userName: null, avatarUrl: null,
   listId: null, inviteCode: null,
   items: [], filter: 'all', selCat: '기타',
-  channel: null,
+  channel: null, editingId: null,
 };
 
 // ── INIT ─────────────────────────────────────────────
@@ -601,11 +605,37 @@ async function addItem() {
   if (!text) { document.getElementById('newName').focus(); return; }
   closeOverlay('addOverlay');
   setSyncing(true);
-  const { data } = await sb.from('shopping_items')
-    .insert({ list_id: s.listId, text, quantity: qty, category: s.selCat, checked: false })
-    .select().single();
+  if (s.editingId) {
+    await sb.from('shopping_items')
+      .update({ text, quantity: qty, category: s.selCat })
+      .eq('id', s.editingId);
+    const item = s.items.find(i => i.id === s.editingId);
+    if (item) { item.text = text; item.quantity = qty; item.category = s.selCat; }
+    s.editingId = null;
+  } else {
+    const { data } = await sb.from('shopping_items')
+      .insert({ list_id: s.listId, text, quantity: qty, category: s.selCat, checked: false })
+      .select().single();
+    if (data) s.items.unshift(data);
+  }
   setSyncing(false);
-  if (data) { s.items.unshift(data); render(); }
+  render();
+}
+
+function openEditModal(item) {
+  s.editingId = item.id;
+  s.selCat = item.category;
+  document.getElementById('newName').value = item.text;
+  document.getElementById('newQty').value = item.quantity;
+  document.getElementById('modalTitle').textContent = '항목 수정';
+  document.getElementById('addSubmitBtn').textContent = '수정하기';
+  document.querySelectorAll('.cat-chip').forEach(c => {
+    c.classList.toggle('selected', c.dataset.cat === item.category);
+  });
+  const overlay = document.getElementById('addOverlay');
+  overlay.style.bottom = '0px';
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('newName').focus(), 250);
 }
 
 async function toggleItem(id) {
@@ -701,6 +731,12 @@ function render() {
       info.innerHTML = `<div class="item-name">${esc(item.text)}</div>
         <div class="item-meta">${item.quantity}개 · ${esc(item.category)}</div>`;
 
+      const edit = document.createElement('button');
+      edit.className = 'edit-btn';
+      edit.textContent = '✏';
+      edit.setAttribute('aria-label', `${item.text} 수정`);
+      edit.onclick = e => { e.stopPropagation(); openEditModal(item); };
+
       const del = document.createElement('button');
       del.className = 'del-btn';
       del.textContent = '✕';
@@ -719,7 +755,7 @@ function render() {
       </svg>`;
       cbWrap.append(cb, cbBox);
 
-      row.append(dot, info, del, cbWrap);
+      row.append(dot, info, edit, del, cbWrap);
       wrap.appendChild(row);
     });
   });
@@ -764,6 +800,7 @@ function buildUI() {
   CATS.forEach(cat => {
     const chip = document.createElement('button');
     chip.className = 'cat-chip' + (s.selCat === cat.id ? ' selected' : '');
+    chip.dataset.cat = cat.id;
     chip.textContent = cat.label;
     chip.onclick = () => {
       s.selCat = cat.id;
@@ -788,9 +825,14 @@ window.visualViewport?.addEventListener('resize', adjustForKeyboard);
 window.visualViewport?.addEventListener('scroll', adjustForKeyboard);
 
 document.getElementById('fab').onclick = () => {
-  const overlay = document.getElementById('addOverlay');
+  s.editingId = null;
+  s.selCat = '기타';
   document.getElementById('newName').value = '';
   document.getElementById('newQty').value = '1';
+  document.getElementById('modalTitle').textContent = '항목 추가';
+  document.getElementById('addSubmitBtn').textContent = '추가하기';
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('selected', c.dataset.cat === '기타'));
+  const overlay = document.getElementById('addOverlay');
   overlay.style.bottom = '0px';
   overlay.classList.add('open');
   setTimeout(() => document.getElementById('newName').focus(), 250);
