@@ -431,7 +431,7 @@ const CATS = [
 ];
 
 const s = {
-  userId: null, userName: null,
+  userId: null, userName: null, avatarUrl: null,
   listId: null, inviteCode: null,
   items: [], filter: 'all', selCat: '기타',
   channel: null,
@@ -443,9 +443,26 @@ async function init() {
   const params = new URLSearchParams(location.search);
   const joinCode = params.get('join');
 
-  s.userId   = localStorage.getItem('userId');
-  s.userName = localStorage.getItem('userName');
-  s.listId   = localStorage.getItem('listId');
+  // 카카오 OAuth 세션 확인 (리다이렉트 후 자동 복원)
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (session?.user) {
+    const u = session.user;
+    s.userId   = u.id;
+    s.userName = u.user_metadata?.name
+              || u.user_metadata?.full_name
+              || u.user_metadata?.preferred_username
+              || '사용자';
+    s.avatarUrl = u.user_metadata?.avatar_url || null;
+    localStorage.setItem('userId', s.userId);
+    localStorage.setItem('userName', s.userName);
+  } else {
+    s.userId    = localStorage.getItem('userId');
+    s.userName  = localStorage.getItem('userName');
+    s.avatarUrl = null;
+  }
+
+  s.listId = localStorage.getItem('listId');
 
   if (!s.userId) {
     if (joinCode) localStorage.setItem('pendingJoin', joinCode);
@@ -457,7 +474,12 @@ async function init() {
     await joinList(joinCode);
     history.replaceState({}, '', location.pathname);
   } else if (!s.listId) {
-    await createList();
+    await findOrCreateList();
+  }
+
+  // OAuth URL 파라미터 정리
+  if (location.hash || location.search) {
+    history.replaceState({}, '', location.pathname);
   }
 
   await Promise.all([loadMeta(), loadItems()]);
@@ -467,11 +489,20 @@ async function init() {
 }
 
 // ── AUTH ─────────────────────────────────────────────
+document.getElementById('kakaoBtn').onclick = async () => {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'kakao',
+    options: { redirectTo: location.origin + location.pathname },
+  });
+  if (error) alert('카카오 로그인 오류: ' + error.message);
+};
+
 document.getElementById('nameBtn').onclick = async () => {
   const name = document.getElementById('nameInput').value.trim();
   if (!name) { document.getElementById('nameInput').focus(); return; }
-  s.userId   = 'u_' + crypto.randomUUID();
-  s.userName = name;
+  s.userId    = 'u_' + crypto.randomUUID();
+  s.userName  = name;
+  s.avatarUrl = null;
   localStorage.setItem('userId', s.userId);
   localStorage.setItem('userName', s.userName);
 
@@ -481,7 +512,7 @@ document.getElementById('nameBtn').onclick = async () => {
     await joinList(pending);
     history.replaceState({}, '', location.pathname);
   } else {
-    await createList();
+    await findOrCreateList();
   }
   await Promise.all([loadMeta(), loadItems()]);
   setupRealtime();
@@ -493,15 +524,25 @@ document.getElementById('nameInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('nameBtn').click();
 });
 
-document.getElementById('kakaoBtn').onclick = async () => {
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'kakao',
-    options: { redirectTo: location.origin + location.pathname },
-  });
-  if (error) alert('카카오 로그인은 설정이 필요합니다.\n이름으로 시작하기를 이용해주세요.');
-};
-
 // ── LIST ─────────────────────────────────────────────
+async function findOrCreateList() {
+  // 이미 멤버로 참여 중인 목록이 있으면 재사용 (다른 기기 로그인 대응)
+  const { data: membership } = await sb
+    .from('list_members')
+    .select('list_id')
+    .eq('user_id', s.userId)
+    .order('joined_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (membership?.list_id) {
+    s.listId = membership.list_id;
+    localStorage.setItem('listId', s.listId);
+  } else {
+    await createList();
+  }
+}
+
 async function createList() {
   const { data, error } = await sb.from('lists')
     .insert({ name: `${s.userName}의 장바구니` })
@@ -679,7 +720,19 @@ function render() {
 // ── UI SETUP ──────────────────────────────────────────
 function buildUI() {
   const av = document.getElementById('userAvatar');
-  av.textContent = (s.userName || '?')[0].toUpperCase();
+  if (s.avatarUrl) {
+    av.innerHTML = `<img src="${s.avatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`;
+  } else {
+    av.textContent = (s.userName || '?')[0].toUpperCase();
+  }
+  av.title = s.userName || '';
+  av.onclick = async () => {
+    if (confirm(`${s.userName}님, 로그아웃 하시겠습니까?`)) {
+      await sb.auth.signOut();
+      localStorage.clear();
+      location.reload();
+    }
+  };
 
   // Category tabs
   const tabs = document.getElementById('catTabs');
