@@ -229,13 +229,13 @@
     .overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.4);
       z-index: 200; display: none; align-items: flex-end; justify-content: center;
-      animation: fadeOv .18s ease;
+      transition: bottom .15s ease;
     }
-    @keyframes fadeOv { from{opacity:0;} to{opacity:1;} }
     .overlay.open { display: flex; }
     .modal {
       background: var(--bg); border-radius: 20px 20px 0 0;
-      padding: 20px 20px 44px; width: 100%; max-width: 480px;
+      padding: 20px 20px 32px; width: 100%; max-width: 480px;
+      max-height: 85dvh; overflow-y: auto; -webkit-overflow-scrolling: touch;
       animation: slideUp .22s cubic-bezier(.4,0,.2,1);
     }
     @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
@@ -769,10 +769,24 @@ function buildUI() {
 }
 
 // ── OVERLAYS ──────────────────────────────────────────
+// 키보드 감지 → 모달 위치 보정
+function adjustForKeyboard() {
+  const overlay = document.getElementById('addOverlay');
+  if (!overlay.classList.contains('open')) return;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  overlay.style.bottom = kbHeight + 'px';
+}
+window.visualViewport?.addEventListener('resize', adjustForKeyboard);
+window.visualViewport?.addEventListener('scroll', adjustForKeyboard);
+
 document.getElementById('fab').onclick = () => {
+  const overlay = document.getElementById('addOverlay');
   document.getElementById('newName').value = '';
   document.getElementById('newQty').value = '1';
-  document.getElementById('addOverlay').classList.add('open');
+  overlay.style.bottom = '0px';
+  overlay.classList.add('open');
   setTimeout(() => document.getElementById('newName').focus(), 250);
 };
 document.getElementById('addSubmitBtn').onclick = addItem;
@@ -839,7 +853,11 @@ function show(name) {
   document.getElementById('fab').style.display         = name === 'main' ? 'flex' : 'none';
   document.getElementById('bottomBar').style.display   = name === 'main' ? 'flex' : 'none';
 }
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function closeOverlay(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('open');
+  el.style.bottom = '0px';
+}
 function setSyncing(on) { document.getElementById('syncDot')?.classList.toggle('syncing', on); }
 function esc(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
