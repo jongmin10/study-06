@@ -352,11 +352,10 @@
   </div>
   <div class="cat-tabs" id="catTabs"></div>
   <div class="summary-bar" id="summaryBar">항목 없음</div>
-  <div class="list-wrap" id="listWrap">
-    <div class="empty" id="emptyState">
-      <div class="empty-icon">🛒</div>
-      <div class="empty-text">+ 버튼을 눌러 항목을 추가하세요</div>
-    </div>
+  <div class="list-wrap" id="listWrap"></div>
+  <div class="empty" id="emptyState" style="display:none">
+    <div class="empty-icon">🛒</div>
+    <div class="empty-text">+ 버튼을 눌러 항목을 추가하세요</div>
   </div>
 </div>
 
@@ -663,7 +662,6 @@ function render() {
 
   if (!filtered.length) {
     wrap.innerHTML = '';
-    wrap.appendChild(empty);
     empty.style.display = 'block';
     return;
   }
