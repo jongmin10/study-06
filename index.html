@@ -2,546 +2,795 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>쇼핑 리스트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>장바구니</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Noto+Serif+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:           #F2EDE3;
-      --surface:      #EBE4D7;
-      --ink:          #1C1812;
-      --accent:       #2C5F2E;
-      --accent-dim:   rgba(44,95,46,0.10);
-      --muted:        #8A7E6E;
-      --danger:       #8B2500;
-      --checked-text: #A8967E;
-      --border:       rgba(28,24,18,0.13);
-      --radius:       3px;
+      --bg:        #ffffff;
+      --bg2:       #f8f9fa;
+      --border:    #e5e7eb;
+      --text:      #111827;
+      --text2:     #6b7280;
+      --accent:    #2563eb;
+      --accent-bg: #eff6ff;
+      --danger:    #ef4444;
+      --success:   #22c55e;
+      --radius:    12px;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      font-family: 'Noto Serif KR', Georgia, serif;
+      font-family: 'Noto Sans KR', sans-serif;
       background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── LOADING ────────────────────────────── */
+    #loadingScreen {
       display: flex;
+      height: 100vh;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
-      padding: 64px 20px 100px;
+      gap: 14px;
     }
-
-    /* grain overlay */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 9999;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-      opacity: 0.45;
+    .spinner {
+      width: 34px; height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .container { width: 100%; max-width: 500px; }
-
-    /* ── HEADER ─────────────────────────── */
-    .header {
+    /* ── LOGIN ──────────────────────────────── */
+    #loginScreen {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 28px;
       text-align: center;
-      margin-bottom: 52px;
-      animation: fadeUp 0.6s ease both;
+    }
+    #loginScreen.active { display: flex; }
+    .login-emoji { font-size: 3.5rem; margin-bottom: 20px; }
+    .login-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
+    .login-sub { color: var(--text2); font-size: 0.9rem; line-height: 1.7; margin-bottom: 40px; }
+    .login-form { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+    .text-input {
+      width: 100%; padding: 14px 16px;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-size: 1rem; font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    .text-input:focus { border-color: var(--accent); }
+    .btn {
+      width: 100%; padding: 14px;
+      border: none; border-radius: var(--radius);
+      font-size: 1rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: opacity 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-kakao { background: #FEE500; color: #191919; }
+    .btn-kakao:hover { background: #f0d800; }
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--text2); font-size: 0.78rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
-    .eyebrow {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.68rem;
-      letter-spacing: 0.3em;
-      color: var(--muted);
-      text-transform: uppercase;
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-title { font-size: 1.05rem; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 6px; }
+    .icon-btn {
+      width: 36px; height: 36px; border: none; background: none;
+      border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; color: var(--text);
+    }
+    .icon-btn:hover { background: var(--bg2); }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+
+    /* ── CATEGORY TABS ──────────────────────── */
+    .cat-tabs {
+      display: flex; gap: 8px; padding: 12px 20px;
+      overflow-x: auto; scrollbar-width: none;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+    }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+      flex-shrink: 0; padding: 6px 14px;
+      border: 1.5px solid var(--border); border-radius: 20px;
+      background: var(--bg); font-size: 0.82rem; font-weight: 500;
+      font-family: inherit; color: var(--text2); cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .cat-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── SUMMARY ────────────────────────────── */
+    .summary-bar {
+      padding: 8px 20px; font-size: 0.8rem;
+      color: var(--text2); background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── LIST ───────────────────────────────── */
+    .list-wrap { padding-bottom: 120px; }
+    .cat-group-header {
+      padding: 10px 20px 4px;
+      font-size: 0.72rem; font-weight: 700;
+      color: var(--text2); text-transform: uppercase;
+      letter-spacing: 0.06em; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+    .item-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      transition: opacity 0.25s;
+      animation: rowIn 0.2s ease both;
+    }
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .item-row.checked { opacity: 0.42; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .item-info { flex: 1; min-width: 0; }
+    .item-name {
+      font-size: 0.95rem; font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .item-row.checked .item-name { text-decoration: line-through; color: var(--text2); }
+    .item-meta { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+    .del-btn {
+      width: 28px; height: 28px; border: none; background: none;
+      color: var(--border); font-size: 0.95rem; cursor: pointer;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s; opacity: 0;
+    }
+    .item-row:hover .del-btn { opacity: 1; }
+    .del-btn:hover { color: var(--danger); background: #fef2f2; }
+
+    /* checkbox */
+    .cb-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; cursor: pointer; }
+    .cb-wrap input { position: absolute; opacity: 0; inset: 0; cursor: pointer; z-index: 1; margin: 0; }
+    .cb-box {
+      width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s; pointer-events: none;
+    }
+    .cb-wrap input:checked ~ .cb-box { background: var(--success); border-color: var(--success); }
+    .cb-box svg { opacity: 0; transform: scale(0.4); transition: all 0.15s; }
+    .cb-wrap input:checked ~ .cb-box svg { opacity: 1; transform: scale(1); }
+
+    /* ── EMPTY ──────────────────────────────── */
+    .empty { text-align: center; padding: 64px 20px; color: var(--text2); }
+    .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-text { font-size: 0.9rem; }
+
+    /* ── FAB ────────────────────────────────── */
+    .fab {
+      position: fixed; bottom: 76px; right: 20px;
+      width: 56px; height: 56px;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 50%; font-size: 1.8rem;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(37,99,235,.35);
+      display: none; align-items: center; justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s; z-index: 50;
+    }
+    .fab:hover { transform: scale(1.06); box-shadow: 0 6px 22px rgba(37,99,235,.45); }
+    .fab:active { transform: scale(0.94); }
+
+    /* ── BOTTOM BAR ─────────────────────────── */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      padding: 10px 20px; background: var(--bg);
+      border-top: 1px solid var(--border);
+      display: none; align-items: center; justify-content: space-between;
+      z-index: 50;
+    }
+    .clear-btn {
+      background: none; border: none; font-family: inherit;
+      font-size: 0.85rem; color: var(--danger); cursor: pointer;
+      padding: 6px 10px; border-radius: 8px; transition: background 0.15s;
+    }
+    .clear-btn:hover { background: #fef2f2; }
+    .sync-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+    }
+    .sync-dot.syncing { animation: pulse 0.9s ease infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+
+    /* ── MODAL ──────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      z-index: 200; display: none; align-items: flex-end; justify-content: center;
+      animation: fadeOv .18s ease;
+    }
+    @keyframes fadeOv { from{opacity:0;} to{opacity:1;} }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--bg); border-radius: 20px 20px 0 0;
+      padding: 20px 20px 44px; width: 100%; max-width: 480px;
+      animation: slideUp .22s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
+    .modal-handle {
+      width: 40px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: 0 auto 18px;
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 18px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block; font-size: 0.72rem; font-weight: 700;
+      color: var(--text2); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .form-input {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 1rem; font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+
+    /* qty stepper */
+    .qty-stepper {
+      display: flex; border: 1.5px solid var(--border);
+      border-radius: 10px; overflow: hidden; width: fit-content;
+    }
+    .qty-btn {
+      width: 44px; height: 44px; border: none; background: var(--bg2);
+      font-size: 1.2rem; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .qty-btn:hover { background: var(--border); }
+    .qty-val {
+      width: 52px; text-align: center; font-size: 1rem; font-weight: 700;
+      border: none; outline: none; font-family: inherit; background: var(--bg);
+    }
+
+    /* category grid */
+    .cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .cat-chip {
+      padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 10px;
+      background: var(--bg); font-size: 0.8rem; font-weight: 500;
+      font-family: inherit; cursor: pointer; text-align: center;
+      transition: all 0.15s;
+    }
+    .cat-chip.selected {
+      border-color: var(--accent); background: var(--accent-bg);
+      color: var(--accent); font-weight: 700;
+    }
+
+    /* share modal */
+    .link-box {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px; background: var(--bg2); border-radius: 10px;
       margin-bottom: 10px;
     }
-
-    h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.8rem, 8vw, 4rem);
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1;
-      letter-spacing: -0.02em;
+    .link-text {
+      flex: 1; font-size: 0.8rem; color: var(--text2);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-
-    .header-divider {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-top: 18px;
+    .copy-btn {
+      flex-shrink: 0; padding: 6px 14px; background: var(--accent);
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 0.8rem; font-weight: 700; font-family: inherit; cursor: pointer;
     }
-    .header-divider::before,
-    .header-divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--ink);
-      opacity: 0.15;
+    .members-wrap { margin-top: 16px; }
+    .members-title { font-size: 0.72rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+    .member-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.9rem; }
+    .member-av {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--accent); color: #fff; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700;
     }
-
-    .summary {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.82rem;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      white-space: nowrap;
-    }
-
-    /* ── INPUT ──────────────────────────── */
-    .input-section {
-      margin-bottom: 36px;
-      animation: fadeUp 0.6s 0.08s ease both;
-    }
-
-    .input-wrapper {
-      display: flex;
-      align-items: flex-end;
-      gap: 0;
-      border-bottom: 1.5px solid var(--ink);
-      padding-bottom: 12px;
-      position: relative;
-    }
-
-    .input-wrapper::after {
-      content: '';
-      position: absolute;
-      bottom: -1.5px;
-      left: 0;
-      width: 0;
-      height: 1.5px;
-      background: var(--accent);
-      transition: width 0.35s cubic-bezier(.4,0,.2,1);
-    }
-    .input-wrapper:focus-within::after { width: 100%; }
-
-    .sr-only {
-      position: absolute; width: 1px; height: 1px;
-      padding: 0; margin: -1px; overflow: hidden;
-      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-    }
-
-    #itemInput {
-      flex: 1;
-      background: none;
-      border: none;
-      outline: none;
-      font-family: 'Noto Serif KR', serif;
-      font-size: 1rem;
-      color: var(--ink);
-      font-weight: 400;
-      padding: 0;
-    }
-    #itemInput::placeholder {
-      color: var(--muted);
-      font-style: italic;
-      font-weight: 300;
-    }
-
-    #addBtn {
-      background: none;
-      border: none;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      color: var(--accent);
-      cursor: pointer;
-      padding: 0 0 0 18px;
-      text-transform: uppercase;
-      transition: color 0.2s, opacity 0.2s;
-      white-space: nowrap;
-    }
-    #addBtn:hover { color: var(--ink); }
-    #addBtn:active { opacity: 0.6; }
-
-    /* ── FILTER ─────────────────────────── */
-    .filter-row {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 28px;
-      animation: fadeUp 0.6s 0.14s ease both;
-    }
-
-    .filter-btn {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 5px 16px;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.76rem;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .filter-btn.active {
-      background: var(--ink);
-      border-color: var(--ink);
-      color: var(--bg);
-    }
-    .filter-btn:hover:not(.active) {
-      border-color: var(--muted);
-      color: var(--ink);
-    }
-
-    /* ── LIST ───────────────────────────── */
-    ul { list-style: none; }
-
-    li {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 15px 0;
-      border-bottom: 1px solid var(--border);
-      position: relative;
-      animation: slideIn 0.28s cubic-bezier(.4,0,.2,1) both;
-      transition: opacity 0.3s;
-    }
-    li.checked { opacity: 0.45; }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* custom checkbox */
-    .cb-wrap {
-      width: 18px;
-      height: 18px;
-      flex-shrink: 0;
-      position: relative;
-      cursor: pointer;
-    }
-    .cb-wrap input[type="checkbox"] {
-      position: absolute;
-      opacity: 0;
-      inset: 0;
-      cursor: pointer;
-      z-index: 1;
-      margin: 0;
-    }
-    .cb-box {
-      width: 18px;
-      height: 18px;
-      border: 1.5px solid var(--muted);
-      border-radius: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: border-color 0.2s, background 0.2s;
-      pointer-events: none;
-    }
-    .cb-wrap input:checked ~ .cb-box {
-      border-color: var(--accent);
-      background: var(--accent);
-    }
-    .cb-box svg {
-      opacity: 0;
-      transform: scale(0.4) rotate(-8deg);
-      transition: opacity 0.18s, transform 0.18s cubic-bezier(.4,0,.2,1);
-    }
-    .cb-wrap input:checked ~ .cb-box svg {
-      opacity: 1;
-      transform: scale(1) rotate(0deg);
-    }
-
-    .item-text {
-      flex: 1;
-      font-size: 0.96rem;
-      color: var(--ink);
-      font-weight: 400;
-      line-height: 1.5;
-      word-break: break-all;
-      transition: color 0.25s;
-    }
-    li.checked .item-text {
-      color: var(--checked-text);
-      text-decoration: line-through;
-      text-decoration-color: rgba(44,95,46,0.5);
-      text-decoration-thickness: 1.5px;
-    }
-
-    .delete-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.7rem;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      opacity: 0;
-      transition: opacity 0.15s, color 0.15s;
-      flex-shrink: 0;
-      padding: 4px 2px;
-    }
-    li:hover .delete-btn { opacity: 1; }
-    .delete-btn:hover { color: var(--danger); }
-
-    /* ── EMPTY ──────────────────────────── */
-    .empty {
-      text-align: center;
-      color: var(--muted);
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
-      font-size: 1.05rem;
-      padding: 44px 0;
-      letter-spacing: 0.06em;
-    }
-
-    /* ── FOOTER ─────────────────────────── */
-    .footer {
-      margin-top: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    #clearBtn {
-      background: none;
-      border: none;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.72rem;
-      letter-spacing: 0.14em;
-      color: var(--muted);
-      cursor: pointer;
-      text-transform: uppercase;
-      transition: color 0.2s;
-      padding: 0;
-    }
-    #clearBtn:hover { color: var(--danger); }
-
-    .sync-badge {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.68rem;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      opacity: 0.55;
-    }
-    .sync-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--accent);
-    }
-    .sync-dot.loading {
-      animation: pulse 1s ease infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.2; }
-    }
+    .me-badge { font-size: 0.72rem; color: var(--text2); }
   </style>
 </head>
 <body>
-  <div class="container">
 
-    <header class="header">
-      <p class="eyebrow">Market List</p>
-      <h1>쇼핑 리스트</h1>
-      <div class="header-divider">
-        <p class="summary" id="summary">항목 없음</p>
-      </div>
-    </header>
+<!-- Loading -->
+<div id="loadingScreen">
+  <div class="spinner"></div>
+  <span style="color:var(--text2);font-size:.85rem">불러오는 중...</span>
+</div>
 
-    <div class="input-section">
-      <div class="input-wrapper">
-        <label for="itemInput" class="sr-only">아이템 이름</label>
-        <input type="text" id="itemInput" placeholder="항목을 추가하세요..." maxlength="60" autocomplete="off" />
-        <button id="addBtn" type="button">+ 추가</button>
-      </div>
-    </div>
-
-    <div class="filter-row">
-      <button class="filter-btn active" type="button" data-filter="all">전체</button>
-      <button class="filter-btn" type="button" data-filter="active">미완료</button>
-      <button class="filter-btn" type="button" data-filter="done">완료</button>
-    </div>
-
-    <ul id="list"></ul>
-    <div class="empty" id="empty" style="display:none">— 항목이 없습니다 —</div>
-
-    <footer class="footer">
-      <button id="clearBtn" type="button">완료 항목 삭제</button>
-      <span class="sync-badge">
-        <span class="sync-dot" id="syncDot"></span>
-        Supabase 동기화
-      </span>
-    </footer>
-
+<!-- Login -->
+<div id="loginScreen">
+  <div class="login-emoji">🛒</div>
+  <h1 class="login-title">장바구니</h1>
+  <p class="login-sub">가족과 함께 쓰는<br>스마트 쇼핑 리스트</p>
+  <div class="login-form">
+    <button class="btn btn-kakao" id="kakaoBtn">
+      <svg width="18" height="17" viewBox="0 0 18 17" fill="none">
+        <path d="M9 0C4.029 0 0 3.134 0 7C0 9.387 1.522 11.497 3.84 12.744L2.88 16.563C2.795 16.9 3.183 17.163 3.474 16.966L7.982 14.05C8.318 14.075 8.657 14.088 9 14.088C13.971 14.088 18 10.954 18 7.088C18 3.134 13.971 0 9 0Z" fill="#191919"/>
+      </svg>
+      카카오로 시작하기
+    </button>
+    <div class="divider">또는 이름으로 시작</div>
+    <input class="text-input" id="nameInput" type="text" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off"/>
+    <button class="btn btn-primary" id="nameBtn">시작하기</button>
   </div>
+</div>
 
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+<!-- Main -->
+<div id="mainScreen" style="display:none">
+  <div class="header">
+    <div class="header-title" id="listName">장바구니</div>
+    <div class="header-right">
+      <button class="icon-btn" id="shareBtn" title="공유">📤</button>
+      <div class="avatar" id="userAvatar">?</div>
+    </div>
+  </div>
+  <div class="cat-tabs" id="catTabs"></div>
+  <div class="summary-bar" id="summaryBar">항목 없음</div>
+  <div class="list-wrap" id="listWrap">
+    <div class="empty" id="emptyState">
+      <div class="empty-icon">🛒</div>
+      <div class="empty-text">+ 버튼을 눌러 항목을 추가하세요</div>
+    </div>
+  </div>
+</div>
 
-    const SUPABASE_URL = 'https://ugowzkpuymwuqoqwkvfi.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_ZpK0oYqtWxOmeXfUIVy9zA_qLgXNIlz';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+<!-- FAB -->
+<button class="fab" id="fab">+</button>
 
-    let items = [];
-    let filter = 'all';
+<!-- Bottom bar -->
+<div class="bottom-bar" id="bottomBar">
+  <button class="clear-btn" id="clearBtn">완료 항목 삭제</button>
+  <div class="sync-dot" id="syncDot"></div>
+</div>
 
-    const input   = document.getElementById('itemInput');
-    const listEl  = document.getElementById('list');
-    const emptyEl = document.getElementById('empty');
-    const summaryEl = document.getElementById('summary');
-    const syncDot   = document.getElementById('syncDot');
+<!-- Add Modal -->
+<div class="overlay" id="addOverlay">
+  <div class="modal" id="addModal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">항목 추가</div>
+    <div class="form-group">
+      <label class="form-label">이름</label>
+      <input class="form-input" id="newName" type="text" placeholder="예: 우유" maxlength="60" autocomplete="off"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">수량</label>
+      <div class="qty-stepper">
+        <button class="qty-btn" id="qtyMinus">−</button>
+        <input class="qty-val" id="newQty" type="number" value="1" min="1" max="99"/>
+        <button class="qty-btn" id="qtyPlus">+</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">카테고리</label>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+    <button class="btn btn-primary" id="addSubmitBtn" style="margin-top:6px">추가하기</button>
+  </div>
+</div>
 
-    document.getElementById('addBtn').addEventListener('click', addItem);
-    document.getElementById('clearBtn').addEventListener('click', clearChecked);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+<!-- Share Modal -->
+<div class="overlay" id="shareOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">공유하기</div>
+    <div class="link-box">
+      <span class="link-text" id="shareLinkText"></span>
+      <button class="copy-btn" id="copyBtn">복사</button>
+    </div>
+    <button class="btn btn-kakao" id="kakaoShareBtn" style="margin-bottom:4px">
+      카카오톡으로 공유
+    </button>
+    <div class="members-wrap">
+      <div class="members-title">참여 멤버</div>
+      <div id="membersList"></div>
+    </div>
+  </div>
+</div>
 
-    document.querySelector('.filter-row').addEventListener('click', e => {
-      const btn = e.target.closest('[data-filter]');
-      if (!btn) return;
-      filter = btn.dataset.filter;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const sb = createClient(
+  'https://ugowzkpuymwuqoqwkvfi.supabase.co',
+  'sb_publishable_ZpK0oYqtWxOmeXfUIVy9zA_qLgXNIlz'
+);
+
+const CATS = [
+  { id: '채소',    label: '🥬 채소',    color: '#22c55e' },
+  { id: '육류',    label: '🥩 육류',    color: '#ef4444' },
+  { id: '유제품',  label: '🥛 유제품',  color: '#3b82f6' },
+  { id: '냉동식품',label: '🧊 냉동식품',color: '#06b6d4' },
+  { id: '음료',    label: '🧃 음료',    color: '#f97316' },
+  { id: '기타',    label: '📦 기타',    color: '#9ca3af' },
+];
+
+const s = {
+  userId: null, userName: null,
+  listId: null, inviteCode: null,
+  items: [], filter: 'all', selCat: '기타',
+  channel: null,
+};
+
+// ── INIT ─────────────────────────────────────────────
+async function init() {
+  show('loading');
+  const params = new URLSearchParams(location.search);
+  const joinCode = params.get('join');
+
+  s.userId   = localStorage.getItem('userId');
+  s.userName = localStorage.getItem('userName');
+  s.listId   = localStorage.getItem('listId');
+
+  if (!s.userId) {
+    if (joinCode) localStorage.setItem('pendingJoin', joinCode);
+    show('login');
+    return;
+  }
+
+  if (joinCode) {
+    await joinList(joinCode);
+    history.replaceState({}, '', location.pathname);
+  } else if (!s.listId) {
+    await createList();
+  }
+
+  await Promise.all([loadMeta(), loadItems()]);
+  setupRealtime();
+  show('main');
+  buildUI();
+}
+
+// ── AUTH ─────────────────────────────────────────────
+document.getElementById('nameBtn').onclick = async () => {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { document.getElementById('nameInput').focus(); return; }
+  s.userId   = 'u_' + crypto.randomUUID();
+  s.userName = name;
+  localStorage.setItem('userId', s.userId);
+  localStorage.setItem('userName', s.userName);
+
+  const pending = localStorage.getItem('pendingJoin');
+  if (pending) {
+    localStorage.removeItem('pendingJoin');
+    await joinList(pending);
+    history.replaceState({}, '', location.pathname);
+  } else {
+    await createList();
+  }
+  await Promise.all([loadMeta(), loadItems()]);
+  setupRealtime();
+  show('main');
+  buildUI();
+};
+
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('nameBtn').click();
+});
+
+document.getElementById('kakaoBtn').onclick = async () => {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'kakao',
+    options: { redirectTo: location.origin + location.pathname },
+  });
+  if (error) alert('카카오 로그인은 설정이 필요합니다.\n이름으로 시작하기를 이용해주세요.');
+};
+
+// ── LIST ─────────────────────────────────────────────
+async function createList() {
+  const { data, error } = await sb.from('lists')
+    .insert({ name: `${s.userName}의 장바구니` })
+    .select().single();
+  if (error) { console.error(error); return; }
+  s.listId = data.id;
+  s.inviteCode = data.invite_code;
+  localStorage.setItem('listId', s.listId);
+  await sb.from('list_members').insert({
+    list_id: s.listId, user_id: s.userId, display_name: s.userName,
+  });
+}
+
+async function joinList(code) {
+  const { data: list } = await sb.from('lists')
+    .select('*').eq('invite_code', code).single();
+  if (!list) { alert('유효하지 않은 초대 링크입니다.'); return; }
+  s.listId = list.id;
+  s.inviteCode = list.invite_code;
+  localStorage.setItem('listId', s.listId);
+  await sb.from('list_members').upsert({
+    list_id: s.listId, user_id: s.userId, display_name: s.userName,
+  });
+}
+
+async function loadMeta() {
+  const { data } = await sb.from('lists').select('*').eq('id', s.listId).single();
+  if (!data) return;
+  s.inviteCode = data.invite_code;
+  document.getElementById('listName').textContent = data.name;
+}
+
+// ── ITEMS ─────────────────────────────────────────────
+async function loadItems() {
+  setSyncing(true);
+  const { data } = await sb.from('shopping_items')
+    .select('*').eq('list_id', s.listId)
+    .order('created_at', { ascending: false });
+  setSyncing(false);
+  s.items = data || [];
+  render();
+}
+
+async function addItem() {
+  const text = document.getElementById('newName').value.trim();
+  const qty  = Math.max(1, parseInt(document.getElementById('newQty').value) || 1);
+  if (!text) { document.getElementById('newName').focus(); return; }
+  closeOverlay('addOverlay');
+  setSyncing(true);
+  const { data } = await sb.from('shopping_items')
+    .insert({ list_id: s.listId, text, quantity: qty, category: s.selCat, checked: false })
+    .select().single();
+  setSyncing(false);
+  if (data) { s.items.unshift(data); render(); }
+}
+
+async function toggleItem(id) {
+  const item = s.items.find(i => i.id === id);
+  if (!item) return;
+  setSyncing(true);
+  await sb.from('shopping_items').update({ checked: !item.checked }).eq('id', id);
+  setSyncing(false);
+  item.checked = !item.checked;
+  render();
+}
+
+async function deleteItem(id) {
+  setSyncing(true);
+  await sb.from('shopping_items').delete().eq('id', id);
+  setSyncing(false);
+  s.items = s.items.filter(i => i.id !== id);
+  render();
+}
+
+document.getElementById('clearBtn').onclick = async () => {
+  setSyncing(true);
+  await sb.from('shopping_items').delete().eq('list_id', s.listId).eq('checked', true);
+  setSyncing(false);
+  s.items = s.items.filter(i => !i.checked);
+  render();
+};
+
+// ── REALTIME ──────────────────────────────────────────
+function setupRealtime() {
+  if (s.channel) sb.removeChannel(s.channel);
+  s.channel = sb.channel('list-' + s.listId)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'shopping_items',
+      filter: `list_id=eq.${s.listId}`,
+    }, ({ eventType, new: n, old: o }) => {
+      if (eventType === 'INSERT') {
+        if (!s.items.find(i => i.id === n.id)) s.items.unshift(n);
+      } else if (eventType === 'UPDATE') {
+        const idx = s.items.findIndex(i => i.id === n.id);
+        if (idx !== -1) s.items[idx] = n;
+      } else if (eventType === 'DELETE') {
+        s.items = s.items.filter(i => i.id !== o.id);
+      }
+      render();
+    })
+    .subscribe();
+}
+
+// ── RENDER ────────────────────────────────────────────
+function render() {
+  const wrap  = document.getElementById('listWrap');
+  const empty = document.getElementById('emptyState');
+  const total = s.items.length;
+  const done  = s.items.filter(i => i.checked).length;
+  document.getElementById('summaryBar').textContent =
+    total === 0 ? '항목 없음' : `${total}개 항목 · 완료 ${done}개`;
+
+  const filtered = s.filter === 'all' ? s.items : s.items.filter(i => i.category === s.filter);
+
+  if (!filtered.length) {
+    wrap.innerHTML = '';
+    wrap.appendChild(empty);
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const grouped = {};
+  filtered.forEach(item => {
+    (grouped[item.category] = grouped[item.category] || []).push(item);
+  });
+
+  wrap.innerHTML = '';
+  CATS.forEach(({ id: catId, label, color }) => {
+    if (!grouped[catId]) return;
+    if (s.filter === 'all') {
+      const h = document.createElement('div');
+      h.className = 'cat-group-header';
+      h.textContent = label;
+      wrap.appendChild(h);
+    }
+    grouped[catId].forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'item-row' + (item.checked ? ' checked' : '');
+      row.style.animationDelay = idx * 0.03 + 's';
+
+      const dot = document.createElement('div');
+      dot.className = 'cat-dot';
+      dot.style.background = color;
+
+      const info = document.createElement('div');
+      info.className = 'item-info';
+      info.innerHTML = `<div class="item-name">${esc(item.text)}</div>
+        <div class="item-meta">${item.quantity}개 · ${esc(item.category)}</div>`;
+
+      const del = document.createElement('button');
+      del.className = 'del-btn';
+      del.textContent = '✕';
+      del.onclick = () => deleteItem(item.id);
+
+      const cbWrap = document.createElement('label');
+      cbWrap.className = 'cb-wrap';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = item.checked;
+      cb.onchange = () => toggleItem(item.id);
+      const cbBox = document.createElement('div');
+      cbBox.className = 'cb-box';
+      cbBox.innerHTML = `<svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+        <path d="M1 4L4 7.5L10 1" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+      cbWrap.append(cb, cbBox);
+
+      row.append(dot, info, del, cbWrap);
+      wrap.appendChild(row);
+    });
+  });
+}
+
+// ── UI SETUP ──────────────────────────────────────────
+function buildUI() {
+  const av = document.getElementById('userAvatar');
+  av.textContent = (s.userName || '?')[0].toUpperCase();
+
+  // Category tabs
+  const tabs = document.getElementById('catTabs');
+  tabs.innerHTML = '';
+  [{ id: 'all', label: '전체' }, ...CATS].forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (s.filter === cat.id ? ' active' : '');
+    btn.textContent = cat.label;
+    btn.onclick = () => {
+      s.filter = cat.id;
+      document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       render();
+    };
+    tabs.appendChild(btn);
+  });
+
+  // Category grid
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  CATS.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'cat-chip' + (s.selCat === cat.id ? ' selected' : '');
+    chip.textContent = cat.label;
+    chip.onclick = () => {
+      s.selCat = cat.id;
+      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    };
+    grid.appendChild(chip);
+  });
+}
+
+// ── OVERLAYS ──────────────────────────────────────────
+document.getElementById('fab').onclick = () => {
+  document.getElementById('newName').value = '';
+  document.getElementById('newQty').value = '1';
+  document.getElementById('addOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('newName').focus(), 250);
+};
+document.getElementById('addSubmitBtn').onclick = addItem;
+document.getElementById('newName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addItem();
+});
+document.getElementById('qtyMinus').onclick = () => {
+  const el = document.getElementById('newQty');
+  el.value = Math.max(1, (parseInt(el.value)||1) - 1);
+};
+document.getElementById('qtyPlus').onclick = () => {
+  const el = document.getElementById('newQty');
+  el.value = Math.min(99, (parseInt(el.value)||1) + 1);
+};
+document.getElementById('addOverlay').onclick = e => {
+  if (e.target === document.getElementById('addOverlay')) closeOverlay('addOverlay');
+};
+
+document.getElementById('shareBtn').onclick = async () => {
+  const url = `${location.origin}${location.pathname}?join=${s.inviteCode}`;
+  document.getElementById('shareLinkText').textContent = url;
+
+  const { data: members } = await sb.from('list_members')
+    .select('*').eq('list_id', s.listId);
+  document.getElementById('membersList').innerHTML = (members || [])
+    .map(m => `<div class="member-row">
+      <div class="member-av">${esc((m.display_name||'?')[0].toUpperCase())}</div>
+      <span>${esc(m.display_name||'멤버')}</span>
+      ${m.user_id === s.userId ? '<span class="me-badge">(나)</span>' : ''}
+    </div>`).join('');
+
+  document.getElementById('shareOverlay').classList.add('open');
+};
+document.getElementById('shareOverlay').onclick = e => {
+  if (e.target === document.getElementById('shareOverlay')) closeOverlay('shareOverlay');
+};
+document.getElementById('copyBtn').onclick = () => {
+  navigator.clipboard.writeText(document.getElementById('shareLinkText').textContent)
+    .then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '완료!';
+      setTimeout(() => btn.textContent = '복사', 2000);
     });
+};
+document.getElementById('kakaoShareBtn').onclick = () => {
+  const url = document.getElementById('shareLinkText').textContent;
+  if (window.Kakao?.Share) {
+    Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: { title: '쇼핑 리스트 공유', description: '함께 장보기 목록을 작성해요!',
+        link: { mobileWebUrl: url, webUrl: url } },
+    });
+  } else {
+    navigator.clipboard.writeText(url);
+    alert('링크가 복사되었습니다.\n카카오톡에 붙여넣기 해주세요.');
+  }
+};
 
-    function setLoading(on) {
-      syncDot.classList.toggle('loading', on);
-    }
+// ── HELPERS ───────────────────────────────────────────
+function show(name) {
+  document.getElementById('loadingScreen').style.display = name === 'loading' ? 'flex' : 'none';
+  document.getElementById('loginScreen').classList.toggle('active', name === 'login');
+  document.getElementById('mainScreen').style.display  = name === 'main' ? 'block' : 'none';
+  document.getElementById('fab').style.display         = name === 'main' ? 'flex' : 'none';
+  document.getElementById('bottomBar').style.display   = name === 'main' ? 'flex' : 'none';
+}
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function setSyncing(on) { document.getElementById('syncDot')?.classList.toggle('syncing', on); }
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
-    async function loadItems() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setLoading(false);
-      if (error) { console.error('로드 오류:', error); return; }
-      items = data;
-      render();
-    }
-
-    async function addItem() {
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .insert({ text, checked: false })
-        .select()
-        .single();
-      setLoading(false);
-      if (error) { console.error('추가 오류:', error); return; }
-      items.unshift(data);
-      render();
-    }
-
-    async function toggleItem(id) {
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-      setLoading(true);
-      const { error } = await supabase
-        .from('shopping_items')
-        .update({ checked: !item.checked })
-        .eq('id', id);
-      setLoading(false);
-      if (error) { console.error('수정 오류:', error); return; }
-      item.checked = !item.checked;
-      render();
-    }
-
-    async function deleteItem(id) {
-      setLoading(true);
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('id', id);
-      setLoading(false);
-      if (error) { console.error('삭제 오류:', error); return; }
-      items = items.filter(i => i.id !== id);
-      render();
-    }
-
-    async function clearChecked() {
-      setLoading(true);
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('checked', true);
-      setLoading(false);
-      if (error) { console.error('삭제 오류:', error); return; }
-      items = items.filter(i => !i.checked);
-      render();
-    }
-
-    function render() {
-      const total = items.length;
-      const done  = items.filter(i => i.checked).length;
-      summaryEl.textContent = total === 0
-        ? '항목 없음'
-        : `${total}개 항목 · 완료 ${done}개`;
-
-      const filtered = items.filter(i => {
-        if (filter === 'active') return !i.checked;
-        if (filter === 'done')   return i.checked;
-        return true;
-      });
-
-      listEl.replaceChildren();
-
-      if (filtered.length === 0) {
-        emptyEl.style.display = 'block';
-        return;
-      }
-      emptyEl.style.display = 'none';
-
-      filtered.forEach((item, idx) => {
-        const li = document.createElement('li');
-        li.style.animationDelay = `${idx * 0.045}s`;
-        if (item.checked) li.classList.add('checked');
-
-        const wrap = document.createElement('label');
-        wrap.className = 'cb-wrap';
-
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = item.checked;
-        cb.addEventListener('change', () => toggleItem(item.id));
-
-        const box = document.createElement('div');
-        box.className = 'cb-box';
-        box.innerHTML = `<svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-          <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>`;
-
-        wrap.append(cb, box);
-
-        const span = document.createElement('span');
-        span.className = 'item-text';
-        span.textContent = item.text;
-
-        const del = document.createElement('button');
-        del.className = 'delete-btn';
-        del.type = 'button';
-        del.setAttribute('aria-label', `${item.text} 삭제`);
-        del.textContent = '삭제';
-        del.addEventListener('click', () => deleteItem(item.id));
-
-        li.append(wrap, span, del);
-        listEl.appendChild(li);
-      });
-    }
-
-    loadItems();
-  </script>
+init();
+</script>
 </body>
 </html>
