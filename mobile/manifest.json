@@ -7,9 +7,15 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#2563eb",
-  "background_color": "#ffffff",
+  "background_color": "#2563eb",
   "lang": "ko",
   "icons": [
+    {
+      "src": "/mobile/icons/cart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/mobile/icons/icon-192.png",
       "sizes": "192x192",
@@ -20,7 +26,7 @@
       "src": "/mobile/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
