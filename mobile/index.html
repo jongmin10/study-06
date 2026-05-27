@@ -528,7 +528,7 @@ async function createList() {
   const { data, error } = await sb.from('lists')
     .insert({ name: `${s.userName}의 장바구니` })
     .select().single();
-  if (error) { console.error(error); return; }
+  if (error) { console.error('리스트 생성 실패:', error.message); return; }
   s.listId = data.id;
   s.inviteCode = data.invite_code;
   localStorage.setItem('listId', s.listId);
