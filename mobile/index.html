@@ -13,6 +13,7 @@
   <link rel="apple-touch-icon" sizes="192x192" href="/mobile/icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/+esm" integrity="sha384-VCrDe1QjiItLAG55BP50GpTforKquIYG27t1y2X0lw7bozHe8HG+QLZAY9txYmlc" crossorigin>
   <style>
     :root {
       --bg:        #ffffff;
@@ -414,7 +415,7 @@
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/+esm';
 
 const sb = createClient(
   'https://ugowzkpuymwuqoqwkvfi.supabase.co',
