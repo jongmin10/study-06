@@ -608,7 +608,7 @@ async function addItem() {
   if (s.editingId) {
     await sb.from('shopping_items')
       .update({ text, quantity: qty, category: s.selCat })
-      .eq('id', s.editingId);
+      .eq('id', s.editingId).eq('list_id', s.listId);
     const item = s.items.find(i => i.id === s.editingId);
     if (item) { item.text = text; item.quantity = qty; item.category = s.selCat; }
     s.editingId = null;
@@ -642,7 +642,7 @@ async function toggleItem(id) {
   const item = s.items.find(i => i.id === id);
   if (!item) return;
   setSyncing(true);
-  await sb.from('shopping_items').update({ checked: !item.checked }).eq('id', id);
+  await sb.from('shopping_items').update({ checked: !item.checked }).eq('id', id).eq('list_id', s.listId);
   setSyncing(false);
   item.checked = !item.checked;
   render();
@@ -650,7 +650,7 @@ async function toggleItem(id) {
 
 async function deleteItem(id) {
   setSyncing(true);
-  await sb.from('shopping_items').delete().eq('id', id);
+  await sb.from('shopping_items').delete().eq('id', id).eq('list_id', s.listId);
   setSyncing(false);
   s.items = s.items.filter(i => i.id !== id);
   render();
