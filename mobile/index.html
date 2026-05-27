@@ -561,7 +561,7 @@ async function loadItems() {
   setSyncing(true);
   const { data } = await sb.from('shopping_items')
     .select('id, list_id, text, quantity, category, checked, created_at').eq('list_id', s.listId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }).limit(200);
   setSyncing(false);
   s.items = data || [];
   render();
