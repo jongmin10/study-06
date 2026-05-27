@@ -735,7 +735,7 @@ function render() {
       const info = document.createElement('div');
       info.className = 'item-info';
       info.innerHTML = `<div class="item-name">${esc(item.text)}</div>
-        <div class="item-meta">${item.quantity}개 · ${esc(item.category)}</div>`;
+        <div class="item-meta">${parseInt(item.quantity, 10) || 1}개 · ${esc(item.category)}</div>`;
 
       const edit = document.createElement('button');
       edit.className = 'edit-btn';
