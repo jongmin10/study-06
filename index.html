@@ -513,7 +513,12 @@ document.getElementById('kakaoBtn').onclick = async () => {
 document.getElementById('nameBtn').onclick = async () => {
   const name = document.getElementById('nameInput').value.trim();
   if (!name) { document.getElementById('nameInput').focus(); return; }
-  s.userId    = 'u_' + crypto.randomUUID();
+
+  // anon 사용자도 authenticated JWT가 필요해야 RLS 통과 가능
+  const { data: anonData, error: anonErr } = await sb.auth.signInAnonymously();
+  if (anonErr) { alert('로그인 오류: ' + anonErr.message); return; }
+
+  s.userId    = anonData.user.id;
   s.userName  = name;
   s.avatarUrl = null;
   localStorage.setItem('userId', s.userId);
