@@ -538,7 +538,7 @@ async function createList() {
 
 async function joinList(code) {
   const { data: list } = await sb.from('lists')
-    .select('*').eq('invite_code', code).single();
+    .select('id, invite_code').eq('invite_code', code).single();
   if (!list) { alert('유효하지 않은 초대 링크입니다.'); return; }
   s.listId = list.id;
   s.inviteCode = list.invite_code;
@@ -549,7 +549,7 @@ async function joinList(code) {
 }
 
 async function loadMeta() {
-  const { data } = await sb.from('lists').select('*').eq('id', s.listId).single();
+  const { data } = await sb.from('lists').select('name, invite_code').eq('id', s.listId).single();
   if (!data) return;
   s.inviteCode = data.invite_code;
   document.getElementById('listName').textContent = data.name;
@@ -559,7 +559,7 @@ async function loadMeta() {
 async function loadItems() {
   setSyncing(true);
   const { data } = await sb.from('shopping_items')
-    .select('*').eq('list_id', s.listId)
+    .select('id, list_id, text, quantity, category, checked, created_at').eq('list_id', s.listId)
     .order('created_at', { ascending: false });
   setSyncing(false);
   s.items = data || [];
@@ -829,7 +829,7 @@ document.getElementById('shareBtn').onclick = async () => {
   document.getElementById('shareLinkText').textContent = url;
 
   const { data: members } = await sb.from('list_members')
-    .select('*').eq('list_id', s.listId);
+    .select('user_id, display_name').eq('list_id', s.listId);
   document.getElementById('membersList').innerHTML = (members || [])
     .map(m => `<div class="member-row">
       <div class="member-av">${esc((m.display_name||'?')[0].toUpperCase())}</div>
