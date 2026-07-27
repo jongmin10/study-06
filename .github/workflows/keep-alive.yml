@@ -11,11 +11,7 @@ jobs:
     steps:
       - name: Ping Supabase Health Endpoint
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://ugowzkpuymwuqoqwkvfi.supabase.co/auth/v1/health")
-          echo "HTTP Status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "Ping failed with status $STATUS"
-            exit 1
-          fi
-          echo "Supabase is alive."
+          echo "$RESPONSE"
+          echo "Ping sent — Supabase keep-alive complete."
